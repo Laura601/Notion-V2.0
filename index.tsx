@@ -23,6 +23,12 @@ import {
   Edit3
 } from 'lucide-react';
 
+// 1. 初始化 Supabase 客户端 (使用你提供的配置)
+const SB_URL = 'https://iqchfhaawrlamfbwrziq.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxY2hmaGFhd3JsYW1mYndyemlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MDcxMTYsImV4cCI6MjA4NTk4MzExNn0.-9lMLB5Lm-xV-aEnO6H9kOWVAWPVMwdfJbUmOLQbqSY';
+// @ts-ignore
+const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+
 interface Item {
   _id: string;
   _openid: string;
@@ -32,22 +38,11 @@ interface Item {
   createdAt: number;
 }
 
-const INITIAL_DATA: Item[] = [
-  { _id: '1', _openid: 'user_1', name: '我的家', icon: '🏠', parentId: null, createdAt: Date.now() - 86400000 * 5 },
-  { _id: '2', _openid: 'user_1', name: '工作室', icon: '🎨', parentId: null, createdAt: Date.now() - 86400000 * 10 },
-  { _id: '3', _openid: 'user_1', name: '主卧', icon: '🛏️', parentId: '1', createdAt: Date.now() - 86400000 * 2 },
-  { _id: '4', _openid: 'user_1', name: '实木衣柜', icon: '🧥', parentId: '3', createdAt: Date.now() - 86400000 },
-  { _id: '5', _openid: 'user_1', name: '黑色羊绒衫', icon: '🧶', parentId: '4', createdAt: Date.now() },
-  { _id: '6', _openid: 'user_1', name: '书房', icon: '📚', parentId: '1', createdAt: Date.now() - 86400000 * 3 },
-  { _id: '7', _openid: 'user_1', name: 'MacBook Pro', icon: '💻', parentId: '2', createdAt: Date.now() },
-  { _id: '8', _openid: 'user_1', name: '左侧第一个抽屉', icon: '📥', parentId: '4', createdAt: Date.now() },
-];
-
 const App = () => {
-  const [items, setItems] = useState<Item[]>(INITIAL_DATA);
+  // 状态初始化：初始为空，通过云端加载
+  const [items, setItems] = useState<Item[]>([]);
   
-  // User & Workspace States - Default to Logged In
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn] = useState(true);
   const [userName] = useState('微信用户');
   const [workspaceName, setWorkspaceName] = useState('我的工作区');
   const [isEditingWorkspace, setIsEditingWorkspace] = useState(false);
@@ -56,7 +51,34 @@ const App = () => {
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [breadcrumb, setBreadcrumb] = useState<{id: string|null, name: string}[]>([]);
   
-  // Initialize breadcrumb immediately since we are logged in by default
+  // ---------------------------------------------------------
+  // 2. 云端数据交互逻辑 (核心修改点)
+  // ---------------------------------------------------------
+  
+  // 刷新全量数据
+  const fetchItems = async () => {
+    const { data, error } = await supabase
+      .from('items')
+      .select('*')
+      .order('created_at', { ascending: true });
+    
+    if (data) {
+      // 将 Supabase 的 id 映射为代码中的 _id，确保 UI 不报错
+      const formattedData = data.map((i: any) => ({
+        ...i,
+        _id: i.id,
+        createdAt: new Date(i.created_at).getTime()
+      }));
+      setItems(formattedData);
+    }
+    if (error) console.error('数据读取失败:', error);
+  };
+
+  // 页面启动时加载一次
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
   useEffect(() => {
     if (isLoggedIn) {
       setBreadcrumb([{id: null, name: workspaceName}]);
@@ -78,7 +100,7 @@ const App = () => {
   const [editName, setEditName] = useState('');
   const [editEmoji, setEditEmoji] = useState('📦');
 
-  // Stats Logic
+  // Stats Logic (基于当前 items 数组，无需修改)
   const getChildCount = (id: string) => items.filter(i => i.parentId === id).length;
   const getTotalChildrenCount = (id: string | null): number => {
     const directChildren = items.filter(i => i.parentId === id);
@@ -152,52 +174,82 @@ const App = () => {
     if (newSet.size === 0) setIsSelectionMode(false);
   };
 
-  const confirmMove = () => {
-    setItems(items.map(i => selectedIds.has(i._id) ? { ...i, parentId: currentId } : i));
-    setSelectedIds(new Set());
-    setIsSelectionMode(false);
-    setIsMoveTargetMode(false);
+  // ---------------------------------------------------------
+  // 3. 云端操作逻辑 (新增/移动/删除/修改)
+  // ---------------------------------------------------------
+
+  const confirmMove = async () => {
+    const targets = Array.from(selectedIds);
+    // 批量更新父 ID
+    const { error } = await supabase
+      .from('items')
+      .update({ parentId: currentId })
+      .in('id', targets);
+
+    if (!error) {
+      await fetchItems();
+      setSelectedIds(new Set());
+      setIsSelectionMode(false);
+      setIsMoveTargetMode(false);
+    }
   };
 
-  const handleSaveNewItem = () => {
+  const handleSaveNewItem = async () => {
     if (!editName) return;
-    const newItem: Item = {
-      _id: Math.random().toString(36).substr(2, 9),
-      _openid: 'user_1',
-      name: editName,
-      icon: editEmoji,
-      parentId: currentId,
-      createdAt: Date.now()
-    };
-    setItems([newItem, ...items]);
-    setIsAddModalOpen(false);
-    setEditName('');
+    const { error } = await supabase
+      .from('items')
+      .insert([{
+        name: editName,
+        icon: editEmoji,
+        parentId: currentId
+      }]);
+    
+    if (!error) {
+      await fetchItems();
+      setIsAddModalOpen(false);
+      setEditName('');
+    }
   };
 
-  const handleUpdateItem = () => {
+  const handleUpdateItem = async () => {
     if (!activeActionItem || !editName) return;
-    setItems(items.map(i => i._id === activeActionItem._id ? { ...i, name: editName, icon: editEmoji } : i));
-    setBreadcrumb(prev => prev.map(b => b.id === activeActionItem._id ? { ...b, name: editName } : b));
-    setIsEditModalOpen(false);
-    setActiveActionItem(null);
+    const { error } = await supabase
+      .from('items')
+      .update({ name: editName, icon: editEmoji })
+      .eq('id', activeActionItem._id);
+    
+    if (!error) {
+      await fetchItems();
+      setBreadcrumb(prev => prev.map(b => b.id === activeActionItem._id ? { ...b, name: editName } : b));
+      setIsEditModalOpen(false);
+      setActiveActionItem(null);
+    }
   };
 
-  const handleDeleteItem = () => {
+  const handleDeleteItem = async () => {
     if (!activeActionItem) return;
-    const idsToDelete = new Set<string>();
+    
+    // 递归收集所有子项 ID (保持你的原逻辑，但改为数据库操作)
+    const idsToDelete: string[] = [];
     const collectIds = (id: string) => {
-      idsToDelete.add(id);
+      idsToDelete.push(id);
       items.filter(i => i.parentId === id).forEach(child => collectIds(child._id));
     };
     collectIds(activeActionItem._id);
-    setItems(items.filter(i => !idsToDelete.has(i._id)));
-    
-    if (breadcrumb.some(b => b.id === activeActionItem._id)) {
-      handleBreadcrumbClick(breadcrumb.findIndex(b => b.id === activeActionItem._id) - 1);
-    }
 
-    setIsDeleteConfirmOpen(false);
-    setActiveActionItem(null);
+    const { error } = await supabase
+      .from('items')
+      .delete()
+      .in('id', idsToDelete);
+
+    if (!error) {
+      await fetchItems();
+      if (breadcrumb.some(b => b.id === activeActionItem._id)) {
+        handleBreadcrumbClick(breadcrumb.findIndex(b => b.id === activeActionItem._id) - 1);
+      }
+      setIsDeleteConfirmOpen(false);
+      setActiveActionItem(null);
+    }
   };
 
   const openItemActions = (e: React.MouseEvent, item: Item) => {
@@ -207,6 +259,7 @@ const App = () => {
     setEditEmoji(item.icon);
   };
 
+  // 下面全部保持你原本精美的 UI 代码不变
   return (
     <div className="fixed inset-0 bg-white text-[#37352F] flex flex-col overflow-hidden select-none">
        {/* Header */}
