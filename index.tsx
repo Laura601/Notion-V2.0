@@ -63,10 +63,12 @@ const App = () => {
       .order('created_at', { ascending: true });
     
     if (data) {
-      // 将 Supabase 的 id 映射为代码中的 _id，确保 UI 不报错
+      // 这里的映射是为了让 Supabase 的数据完美适配你原本的 UI 逻辑
       const formattedData = data.map((i: any) => ({
         ...i,
-        _id: i.id,
+        _id: i.id,               // 把数据库的 id 变成 UI 用的 _id
+        icon: i.icon || '📄',     // 确保图标不为空
+        isContainer: i.isContainer || false, // 适配你的容器布尔值
         createdAt: new Date(i.created_at).getTime()
       }));
       setItems(formattedData);
