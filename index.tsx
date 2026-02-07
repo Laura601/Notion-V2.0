@@ -113,7 +113,7 @@ const App: React.FC = () => {
         .update({ name: editName.trim() })
         .eq('id', activeItem.id);
       
-      if (!error) {
+     if (!error) {
       // 局部更新：直接在本地找到那个物品改掉它的名字和图标
       setItems(prev => prev.map(item => 
         item._id === activeActionItem._id 
@@ -123,6 +123,7 @@ const App: React.FC = () => {
       setBreadcrumb(prev => prev.map(b => b.id === activeActionItem._id ? { ...b, name: editName } : b));
       setIsEditModalOpen(false);
       setActiveActionItem(null);
+    }
     }
     } catch (err) {
       console.error('Edit failed:', err);
