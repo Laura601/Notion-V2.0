@@ -262,6 +262,32 @@ const App = () => {
     setEditName(item.name);
     setEditEmoji(item.icon);
   };
+  // --- 新增：导出 AI 知识库逻辑 ---
+  const exportDataForAI = () => {
+    // 递归获取完整路径的函数（将 ID 转换为文字路径）
+    const getPathName = (parentId: string | null): string => {
+      if (!parentId) return "工作区首页";
+      const parent = items.find(i => i._id === parentId);
+      if (!parent) return "未知位置";
+      const grandParentPath = getPathName(parent.parentId);
+      return (grandParentPath === "工作区首页" ? "" : grandParentPath + " > ") + parent.name;
+    };
+
+    // 生成纯文本内容
+    const content = items.map(item => {
+      const path = getPathName(item.parentId);
+      return `物品: ${item.icon} ${item.name} | 存放位置: ${path}`;
+    }).join('\n');
+
+    // 创建文件并下载
+    const blob = new Blob([`【我的物品清单】\n导出时间: ${new Date().toLocaleString()}\n\n${content}`], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `物品清单_${new Date().toLocaleDateString()}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   // 下面全部保持你原本精美的 UI 代码不变
   return (
