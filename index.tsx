@@ -440,6 +440,12 @@ const App = () => {
           ) : (
              <div className="p-6 flex justify-between items-center">
                 <button onClick={() => setIsStatsOpen(true)} className="w-12 h-12 flex items-center justify-center text-[#D3D2CE] hover:text-[#37352F] transition-colors"><Hash size={24} /></button>
+               <button 
+  onClick={exportDataForAI} 
+  className="flex items-center gap-1 text-[10px] font-bold text-[#7A776E] bg-[#F7F6F3] px-2 py-1 rounded-md ml-2 active:scale-90 transition-all"
+>
+  导出AI清单
+</button>
                 <button 
                   onClick={() => { setIsAddModalOpen(true); setEditName(''); setEditEmoji('📦'); }}
                   className="w-14 h-14 bg-[#37352F] text-white rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all"
