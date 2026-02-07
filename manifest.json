@@ -1,0 +1,15 @@
+{
+  "name": "我的物品记录",
+  "short_name": "物品记录",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/850/850714.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
