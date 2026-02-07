@@ -199,14 +199,14 @@ const App = () => {
   const handleSaveNewItem = async () => {
     if (!editName) return;
     // 这里负责把新填写的名字和选中的图标存入云端
-    const { error } = await supabase
-      .from('items')
-      .insert([{
-        name: editName,
-        icon: editEmoji,
-        parentId: currentId,
-        isContainer: editEmoji === '📦' || editEmoji === '🏠' // 自动判断是否是容器
-      }]);
+   const { error } = await supabase
+  .from('items')
+  .insert([{
+    name: editName,
+    icon: editEmoji,
+    parentId: currentId || null, // 重点：如果 currentId 为空，转为 null
+    "isContainer": editEmoji === '📦' || editEmoji === '🏠'
+  }]);
     
     if (!error) {
       await fetchItems(); // 成功后刷新列表
